@@ -61,7 +61,8 @@ for i in range(nCards):
 cycle = [0] * nCards
     
 # test transformed actions
-print("Transformed"        )
+print("Transformed")
+
 for i in range(nCards):
     cardsA = []
     cardsB = []
@@ -106,6 +107,7 @@ y0 = imageSize[1] // 2
 iconWidth = 100
 iconHeight = 100
 
+mode = 1
 
 r0 = r - 60
 r1 = r + 84
@@ -135,10 +137,91 @@ image.save("cycle.png")
 
 # generate movement card backs
 
-iconWidth = 90
-iconHeight = 90
-r1 = r + 36
-r0 = r - 64
+class CardBack:
+    def __init__(self, iconFiles, imageSize, radius):
+        self.icons = iconFiles
+        self.size = imageSize
+        self.iconWidth = 90
+        self.iconHeight = 90
+        self.r0 = radius - 64
+        self.r1 = radius + 36
+        self.nCards = len(iconFiles)
+        self.mode = 1
+
+    def generate(self, tokenMove, index):
+        image = Image.new("RGB", self.size, (255,255,255))
+        draw = ImageDraw.Draw(image)
+
+        #border
+        draw.rectangle([(1,1),(self.size[0]-2, self.size[1]-2)], outline=(0,0,0), width = 1)
+        draw.rectangle([(0,0),(self.size[0]-1, self.size[1]-1)], outline=(120,120,120), width = 1)
+
+        j0 = 0
+        nShow = self.nCards - 1
+        if self.mode == 1: nShow = self.nCards
+        for j in range(nCards):
+            if index == j and self.mode == 0: continue
+
+            angle = 2*pi*(j0 - index) / nShow
+            iconIndex = j
+            if self.mode == 1:
+                angle = pi / 2 - (2*pi*j / nShow)
+                iconIndex = cycle[j]
+
+            iconImage = Image.open(self.icons[iconIndex])
+            iconResized = iconImage.resize((self.iconWidth, self.iconHeight))
+            j0 += 1
+
+            x1 = int(x0 + self.r1*cos(angle))
+            y1 = int(y0 - self.r1*sin(angle))
+            image.paste(iconResized, (x1  - iconWidth // 2, y1 - iconHeight // 2), mask=iconResized)
+
+            # token movement actions
+            
+            x1 = int(x0 + self.r0*cos(angle))
+            y1 = int(y0 - self.r0*sin(angle))
+            move = tokenMove[iconIndex]
+            if move > 5 and self.mode == 0: move -= 11
+            moveMag = abs(move)
+            text = "{}".format(moveMag)
+            textWidth, textHeight = font.getsize(text)
+            draw.text((x1 - textWidth//2, y1 - textHeight//2 - 4), text, fill = (0,0,0), font=font)
+
+            if self.mode == 1:
+                draw.ellipse([(x1-40, y1-40),(x1+40,y1+40)], outline = (0,0,0), width = 2)
+            else:
+                s = 0
+                if move > 0: s = 1
+                elif move < 0: s = -1
+                # +1 for clockwise
+                # -1 for anti-clockwise
+                self.arcArrows(draw, x1, y1, 2, s)
+
+        if self.mode == 1:
+            self.arcArrows(draw, x0, y0, 5, 1)
+        return image
+
+    def arcArrows(self, draw, x, y, f, s):
+        d = 20 * f
+        draw.arc([(x-d, y-d),(x+d,y+d)], -60, 60, fill = (0,0,0), width = f+1)
+        draw.arc([(x-d, y-d),(x+d,y+d)], 120, 240, fill = (0,0,0), width = f+1)
+
+        if s != 0:
+            x2 = x + 8*f
+            y2 = y + 19 * f * s
+            xy = [(x2, y2), (x2+8*f, y2-4*f*s), (x2+4*f, y2-8*f*s)]
+            draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
+
+            x2 = x - 8*f
+            y2 = y - 19 * f * s
+            xy = [(x2, y2), (x2-8*f, y2+4*f*s), (x2-4*f, y2+8*f*s)]
+            draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
+
+
+#iconWidth = 90
+#iconHeight = 90
+#r1 = r + 36
+#r0 = r - 64
 
 frontWidth = imageSize[0] - 120
 
@@ -147,53 +230,10 @@ font = ImageFont.truetype("arialbd.ttf", 50)
 
 for i in range(nCards):
     # back of card
-    image = Image.new("RGB", imageSize, (255,255,255))
-    draw = ImageDraw.Draw(image)
+    cardBack = CardBack(icons, imageSize, r)
+    cardBack.mode = mode
+    image = cardBack.generate(moves[i], i)
     
-    #border
-    draw.rectangle([(1,1),(imageSize[0]-2, imageSize[1]-2)], outline=(0,0,0), width = 1)
-    draw.rectangle([(0,0),(imageSize[0]-1, imageSize[1]-1)], outline=(120,120,120), width = 1)
-    
-    j0 = 0
-    for j in range(nCards):
-        if i == j: continue
-        angle = 2*pi*(j0 - i) /(nCards - 1)
-        iconImage = Image.open(icons[j])
-        iconResized = iconImage.resize((iconWidth, iconHeight))
-        j0 += 1
-
-        x1 = int(x0 + r1*cos(angle))
-        y1 = int(y0 - r1*sin(angle))
-        image.paste(iconResized, (x1  - iconWidth // 2, y1 - iconHeight // 2), mask=iconResized)
-
-        x1 = int(x0 + r0*cos(angle))
-        y1 = int(y0 - r0*sin(angle))
-        move = moves[i][j]
-        if move > 5: move -= 11
-        moveMag = abs(move)
-        text = "{}".format(moveMag)
-        textWidth, textHeight = font.getsize(text)
-        draw.text((x1 - textWidth//2, y1 - textHeight//2 - 4), text, fill = (0,0,0), font=font)
-
-        draw.arc([(x1-40, y1-40),(x1+40,y1+40)], -60, 60, fill = (0,0,0), width = 3)
-        draw.arc([(x1-40, y1-40),(x1+40,y1+40)], 120, 240, fill = (0,0,0), width = 3)
-
-        # draw arrow heads
-        s = 1
-        if move < 0: s = -1
-        # +1 for clockwise
-        # -1 for anti-clockwise
-        
-        x2 = x1 + 16
-        y2 = y1 + 38 * s
-        xy = [(x2, y2), (x2+16, y2-8*s), (x2+8, y2-16*s)]
-        draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
-
-        x2 = x1 - 16
-        y2 = y1 - 38 * s
-        xy = [(x2, y2), (x2-16, y2+8*s), (x2-8, y2+16*s)]
-        draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
-
     image.save("back{:02d}.png".format(i))
 
     #front of card
@@ -214,15 +254,17 @@ for i in range(nCards):
 for panelIndex in [0, 1, 2]:
     panelWidth = imageSize[1] * 2
     panelHeight = imageSize[0] * 4
-    panelImage = Image.new("RGB", (panelWidth, panelHeight))
+    panelImage = Image.new("RGB", (panelWidth, panelHeight), (255,255,255))
     for i in range(4):
         j = panelIndex * 4 + i
         if j < 11:
             frontImage = Image.open("front{:02d}.png".format(j))
             backImage = Image.open("back{:02d}.png".format(j))
-        else:
+        elif mode == 0:
             frontImage = Image.open("cycle.png")
             backImage = Image.new("RGB",imageSize, (255,255,255))
+        else:
+            break
 
         panelImage.paste(frontImage.rotate(90, expand=1), ((i % 2) * imageSize[1], (i // 2) * imageSize[0] * 2))
         panelImage.paste(backImage.rotate(90, expand=1), ((i % 2) * imageSize[1], ((i // 2) * 2 + 1) * imageSize[0]))
