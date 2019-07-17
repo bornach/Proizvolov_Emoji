@@ -3,11 +3,12 @@ from __future__ import division, print_function
 
 # test missing card idea using Proizvolov identity
 
-import random
+import random, sys
 
 nCards = 11
 
 cardValue = [0, 1, 2, 3, 4, 10, 11, 12, 13, 14, 15]
+altValue = [9, 8, 7, 6, 5, 10, 9, 8, 7, 6, 5]
 
 nHalf = (nCards - 1) // 2
 
@@ -23,6 +24,8 @@ def calcProizvolov(cardsA, cardsB):
     return result
 
 print("Test Proizvolov identity")
+checkMod = [0] * nCards
+cycle = [0] * nCards
 for i in range(nCards):
     cardsA = []
     cardsB = []
@@ -44,50 +47,72 @@ for i in range(nCards):
                 cardsB.append(cardValue[j])
 
     p = calcProizvolov(cardsA, cardsB)
-    print(i, cardsA, cardsB, p, (p % nCards))
+    checkMod[i] = p % nCards
+    print(i, cardsA, cardsB, p, checkMod[i])
+    cycle[checkMod[i]] = i
 
 print("Moves tables")
 moves = [[0] * nCards for i in range(nCards)]
 
+
+print("   ",":".join(["{:2d}".format(x) for x in range(nCards)]))
 for i in range(nCards):
+    print("{:2d}".format(i), end=":")
     for j in range(nCards):
         moves[i][j] = abs(cardValue[i] - cardValue[j]) % nCards
+        if (i > nHalf and j > nHalf) or (i < nHalf and j < nHalf):
+            moves[i][j] = abs(cardValue[i] - altValue[j]) % nCards
+        print("{:3d}".format(moves[i][j]), end="")
+    print()
 
-    print(i, moves[i])
+
 
 
 # generate circle of symbols - a token will be moved clockwise/counter-clockwise on this circle
 
-cycle = [0] * nCards
     
 # test transformed actions
 print("Transformed")
 
+# verification
+fail = 0
 for i in range(nCards):
-    cardsA = []
-    cardsB = []
-    
-    
-    mask = [0] * nCards
-    j = nHalf
-    while j > 0:
-        k = random.randint(0, nCards - 1)
-        if k != i and mask[k] == 0:
-            mask[k] = 1
-            j -= 1
-        
-    for j in range(nCards):
-        if i != j:
-            if mask[j] == 1:
-                cardsA.append(j)
-            else:
-                cardsB.append(j)
+    for trial in range(100):
+        cardsA = []
+        cardsB = []
 
-    position = 0
-    for j in range(nHalf):
-        position = (position + moves[cardsA[j]][cardsB[nHalf - 1 - j]]) % nCards
-    print(i, cardsA, cardsB, position)
-    cycle[position] = i
+        shuffled = range(nCards)
+        random.shuffle(shuffled)
+        print("shuffled",shuffled)
+
+        mask = [0] * nCards
+        j = nHalf
+        while j > 0:
+            k = random.randint(0, nCards - 1)
+            if shuffled[k] != i and mask[k] == 0:
+                mask[k] = 1
+                j -= 1
+
+
+
+        for j in range(nCards):
+            if i != shuffled[j]:
+                if mask[j] == 1:
+                    cardsA.append(shuffled[j])
+                else:
+                    cardsB.append(shuffled[j])
+
+        position = 0
+        for j in range(nHalf):
+            position = position + moves[cardsA[j]][cardsB[j]]
+        print(i, cardsA, cardsB, position, position % nCards)
+        if (position % nCards) != checkMod[i]:
+            print("FAILED!")
+            fail = 1
+if fail:
+    sys.exit(1)
+
+## create card images
 
 icons = ["airplane.png", "owl.png", "butterfly.png", "crab.png",
          "fox_face.png", "green_apple.png", "grinning_face.png",
@@ -202,20 +227,22 @@ class CardBack:
         return image
 
     def arcArrows(self, draw, x, y, f, s):
+        colour = (80, 80, 80)
         d = 20 * f
-        draw.arc([(x-d, y-d),(x+d,y+d)], -60, 60, fill = (0,0,0), width = f+1)
-        draw.arc([(x-d, y-d),(x+d,y+d)], 120, 240, fill = (0,0,0), width = f+1)
+        for d1 in [0, 1]:
+            draw.arc([(x-d+d1, y-d),(x+d+d1,y+d)], -60, 60, fill = colour, width = f+1)
+            draw.arc([(x-d+d1, y-d),(x+d+d1,y+d)], 120, 240, fill = colour, width = f+1)
 
         if s != 0:
             x2 = x + 8*f
             y2 = y + 19 * f * s
             xy = [(x2, y2), (x2+8*f, y2-4*f*s), (x2+4*f, y2-8*f*s)]
-            draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
+            draw.polygon(xy, fill = colour, outline = colour)
 
             x2 = x - 8*f
             y2 = y - 19 * f * s
             xy = [(x2, y2), (x2-8*f, y2+4*f*s), (x2-4*f, y2+8*f*s)]
-            draw.polygon(xy, fill = (0,0,0), outline = (0,0,0))
+            draw.polygon(xy, fill = colour, outline = colour)
 
 
 #iconWidth = 90
@@ -251,9 +278,10 @@ for i in range(nCards):
     image.save("front{:02d}.png".format(i))
 
 # panelise into 3 large images for printing
+margin = 0
 for panelIndex in [0, 1, 2]:
-    panelWidth = imageSize[1] * 2
-    panelHeight = imageSize[0] * 4
+    panelWidth = imageSize[1] * 2 + 2*margin
+    panelHeight = imageSize[0] * 4 + 2*margin
     panelImage = Image.new("RGB", (panelWidth, panelHeight), (255,255,255))
     for i in range(4):
         j = panelIndex * 4 + i
@@ -266,7 +294,7 @@ for panelIndex in [0, 1, 2]:
         else:
             break
 
-        panelImage.paste(frontImage.rotate(90, expand=1), ((i % 2) * imageSize[1], (i // 2) * imageSize[0] * 2))
-        panelImage.paste(backImage.rotate(90, expand=1), ((i % 2) * imageSize[1], ((i // 2) * 2 + 1) * imageSize[0]))
+        panelImage.paste(frontImage.rotate(90, expand=1), ((i % 2) * imageSize[1] + margin, (i // 2) * imageSize[0] * 2 + margin))
+        panelImage.paste(backImage.rotate(90, expand=1), ((i % 2) * imageSize[1] + margin, ((i // 2) * 2 + 1) * imageSize[0] + margin))
 
-    panelImage.save("panel{}.png".format(panelIndex))
+    panelImage.save("shuffle{}.png".format(panelIndex))
