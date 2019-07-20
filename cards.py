@@ -113,10 +113,10 @@ if fail:
     sys.exit(1)
 
 ## create card images
+icons = ["1F33B.png", "1FA82.png", "1F34E.png", "1F41F.png", "1F436.png", "1F603.png", "1F984.png", "1F986.png", "1F347.png", "2665.png", "270F.png"]
+icons.reverse()
 
-icons = ["airplane.png", "owl.png", "butterfly.png", "crab.png",
-         "fox_face.png", "green_apple.png", "grinning_face.png",
-         "key.png", "musical_note.png", "turtle.png", "wrench.png"]
+#icons = ["airplane.png", "owl.png", "butterfly.png", "crab.png", "fox_face.png", "green_apple.png", "grinning_face.png", "key.png", "musical_note.png", "turtle.png", "wrench.png"]
 
 
 from PIL import Image, ImageDraw, ImageFont
@@ -129,8 +129,8 @@ r = imageSize[0] / 3 + 20
 x0 = imageSize[0] // 2
 y0 = imageSize[1] // 2
 
-iconWidth = 100
-iconHeight = 100
+iconWidth = 120
+iconHeight = 120
 
 mode = 1
 
@@ -141,7 +141,7 @@ draw = ImageDraw.Draw(image)
 for i in range(nCards):
     # start position is top most icon
     angle = 2*pi*i/nCards
-    iconImage = Image.open(icons[cycle[i]])
+    iconImage = Image.open(icons[cycle[i]]).convert("RGBA")
     iconResized = iconImage.resize((iconWidth,iconHeight))
     x1 = int(x0 + r*sin(angle))
     y1 = int(y0 - r*cos(angle))
@@ -166,8 +166,8 @@ class CardBack:
     def __init__(self, iconFiles, imageSize, radius):
         self.icons = iconFiles
         self.size = imageSize
-        self.iconWidth = 90
-        self.iconHeight = 90
+        self.iconWidth = 120
+        self.iconHeight = 120
         self.r0 = radius - 64
         self.r1 = radius + 36
         self.nCards = len(iconFiles)
@@ -193,13 +193,13 @@ class CardBack:
                 angle = pi / 2 - (2*pi*j / nShow)
                 iconIndex = cycle[j]
 
-            iconImage = Image.open(self.icons[iconIndex])
+            iconImage = Image.open(self.icons[iconIndex]).convert("RGBA")
             iconResized = iconImage.resize((self.iconWidth, self.iconHeight))
             j0 += 1
 
             x1 = int(x0 + self.r1*cos(angle))
             y1 = int(y0 - self.r1*sin(angle))
-            image.paste(iconResized, (x1  - iconWidth // 2, y1 - iconHeight // 2), mask=iconResized)
+            image.paste(iconResized, (x1  - self.iconWidth // 2, y1 - self.iconHeight // 2), mask=iconResized)
 
             # token movement actions
             
@@ -265,7 +265,7 @@ for i in range(nCards):
 
     #front of card
     image = Image.new("RGB", imageSize, (255, 255, 255))
-    iconImage = Image.open(icons[i])
+    iconImage = Image.open(icons[i]).convert("RGBA")
     iconResized = iconImage.resize((frontWidth, frontWidth), resample=Image.BICUBIC)
     image.paste(iconResized, (x0 - frontWidth // 2, y0 - frontWidth // 2), mask = iconResized)
 
@@ -278,7 +278,7 @@ for i in range(nCards):
     image.save("front{:02d}.png".format(i))
 
 # panelise into 3 large images for printing
-margin = 0
+margin = 70
 for panelIndex in [0, 1, 2]:
     panelWidth = imageSize[1] * 2 + 2*margin
     panelHeight = imageSize[0] * 4 + 2*margin
